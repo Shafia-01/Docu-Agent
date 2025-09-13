@@ -1,3 +1,4 @@
+# test
 from src.ingest import extract_documents
 from src.vectorstore import InMemoryVectorStore
 from src.qa import QAEngine, GeminiModel, GroqModel
@@ -12,7 +13,7 @@ print(f"[TEST] Extracted {len(chunks)} chunks")
 
 # 3. Init vectorstore + LLM (choose one)
 vs = InMemoryVectorStore()
-llm = GeminiModel()   # or GroqModel()
+llm = GroqModel()   # or GeminiModel()
 
 # 4. Init QA engine
 qa = QAEngine(vectorstore=vs, llm=llm)

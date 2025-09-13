@@ -55,7 +55,7 @@ def extract_pdf(path: str) -> Dict:
     try:
         with pdfplumber.open(path) as pdf:
             for i, p in enumerate(pdf.pages):
-                print(f"   Extracting tables from page {i+1}...")
+                print(f"Extracting tables from page {i+1}...")
                 tables = p.extract_tables()
                 for t_idx, table in enumerate(tables):
                     table_path = os.path.join(

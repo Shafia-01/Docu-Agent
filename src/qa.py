@@ -3,10 +3,17 @@
 QA Engine: LLM-agnostic question answering module.
 Supports Gemini and Groq via llm_client.py
 Compatible with existing ingestion.py and vectorstore.py.
+Uses sentence-transformers for embeddings.
 """
 
 from typing import List, Dict
 from src.llm_client import get_gemini_client, get_groq_client
+
+# ----------------------
+# For local embeddings
+# ----------------------
+from sentence_transformers import SentenceTransformer
+embed_model = SentenceTransformer("all-mpnet-base-v2")
 
 
 # ----------------------
@@ -49,14 +56,13 @@ class GeminiModel(LLMInterface):
 # Groq Wrapper
 # ----------------------
 class GroqModel(LLMInterface):
-    def __init__(self, embedding_model="groq-embed-001", llm_model="mixtral-8x7b-32768"):
+    def __init__(self, llm_model="groq/compound"):
         self.client = get_groq_client()
-        self.embedding_model = embedding_model
         self.llm_model = llm_model
 
+    # Use sentence-transformers for embeddings
     def get_embeddings(self, text_list: List[str]) -> List[List[float]]:
-        resp = self.client.embeddings.create(model=self.embedding_model, input=text_list)
-        return [d.embedding for d in resp.data]
+        return [embed_model.encode(text).tolist() for text in text_list]
 
     def generate_text(self, prompt: str, system_prompt: str = "") -> str:
         resp = self.client.chat.completions.create(
@@ -85,7 +91,7 @@ class QAEngine:
             self.vs.add(vec, c, id=c["id"])
         print(f"[QA] Added {len(chunks)} chunks to vectorstore.")
 
-    def ask(self, query: str, top_k: int = 5) -> str:
+    def ask(self, query: str, top_k: int = 10) -> str:
         print(f"[QA] User query: {query}")
 
         query_vec = self.llm.get_embeddings([query])[0]
@@ -93,8 +99,8 @@ class QAEngine:
         contexts = [r["metadata"]["text"] for r in retrieved]
 
         context_str = "\n\n".join(contexts)
-        prompt = f"""Answer the following question using ONLY the provided context.
-If the answer is not in the context, say "I don't know."
+        prompt = f"""Answer the following question using the provided context.
+You may infer the answer if necessary.
 
 Context:
 {context_str}
@@ -111,11 +117,10 @@ Answer:
 if __name__ == "__main__":
     from src.vectorstore import InMemoryVectorStore
 
-    # Choose provider
+    vs = InMemoryVectorStore()
     # llm = GeminiModel()
     # llm = GroqModel()
-
-    vs = InMemoryVectorStore()
     # qa = QAEngine(vectorstore=vs, llm=llm)
     # qa.add_documents(chunks)
     # print(qa.ask("Summarize the document"))
+
