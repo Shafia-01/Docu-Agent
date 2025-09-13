@@ -7,7 +7,7 @@ Uses sentence-transformers for embeddings.
 """
 
 from typing import List, Dict
-from src.llm_client import get_gemini_client, get_groq_client
+from llm_client import get_gemini_client, get_groq_client
 
 # ----------------------
 # For local embeddings
@@ -77,7 +77,7 @@ class GroqModel(LLMInterface):
 
 
 # ----------------------
-# QA Engine
+# QA Engine (Enhanced)
 # ----------------------
 class QAEngine:
     def __init__(self, vectorstore, llm: LLMInterface):
@@ -91,16 +91,38 @@ class QAEngine:
             self.vs.add(vec, c, id=c["id"])
         print(f"[QA] Added {len(chunks)} chunks to vectorstore.")
 
-    def ask(self, query: str, top_k: int = 10) -> str:
+    def ask(
+        self, 
+        query: str, 
+        top_k: int = 10, 
+        per_document: bool = False
+    ) -> str:
+        """
+        Ask a question over multiple documents.
+        
+        per_document=True -> answers are returned grouped by document.
+        per_document=False -> answers are combined across all docs.
+        """
         print(f"[QA] User query: {query}")
 
         query_vec = self.llm.get_embeddings([query])[0]
         retrieved = self.vs.similarity_search(query_vec, top_k=top_k)
-        contexts = [r["metadata"]["text"] for r in retrieved]
 
-        context_str = "\n\n".join(contexts)
-        prompt = f"""Answer the following question using the provided context.
-You may infer the answer if necessary.
+        # Group chunks by document
+        docs = {}
+        for r in retrieved:
+            meta = r["metadata"]
+            doc_title = meta.get("title") or meta.get("source_name") or "Unknown Document"
+            if doc_title not in docs:
+                docs[doc_title] = []
+            docs[doc_title].append(r["metadata"]["text"])
+
+        if per_document:
+            # Per-document answers
+            answers = []
+            for doc_title, texts in docs.items():
+                context_str = "\n\n".join(texts)
+                prompt = f"""Answer the following question using ONLY the context from this document.
 
 Context:
 {context_str}
@@ -108,19 +130,48 @@ Context:
 Question: {query}
 Answer:
 """
-        return self.llm.generate_text(prompt)
+                ans = self.llm.generate_text(prompt)
+                answers.append(f"{doc_title}:\n{ans}")
+            return "\n\n".join(answers)
+        else:
+            # Combined answer
+            all_texts = [text for texts in docs.values() for text in texts]
+            context_str = "\n\n".join(all_texts)
+            prompt = f"""Answer the following question using the combined context from all relevant documents.
+
+Context:
+{context_str}
+
+Question: {query}
+Answer:
+"""
+            return f"=== Combined Answer ===\n{self.llm.generate_text(prompt)}"
 
 
 # ----------------------
 # Example Usage
 # ----------------------
 if __name__ == "__main__":
-    from src.vectorstore import InMemoryVectorStore
+    from vectorstore import InMemoryVectorStore
+    from ingest import extract_documents
 
+    files = ["data/2509.08876v1.pdf",
+             "data/2509.09661v1.docx"]
+    chunks = extract_documents(files)
     vs = InMemoryVectorStore()
-    # llm = GeminiModel()
-    # llm = GroqModel()
-    # qa = QAEngine(vectorstore=vs, llm=llm)
-    # qa.add_documents(chunks)
-    # print(qa.ask("Summarize the document"))
 
+    # For Gemini (Google)
+    # llm = GeminiModel()
+    # qa = QAEngine(vectorstore=vs, llm=llm)
+    # For Groq (local embeddings + Groq LLM)
+    # llm=GroqModel() 
+    llm = GroqModel()
+    qa = QAEngine(vectorstore=vs, llm=llm)
+    qa.add_documents(chunks)
+    
+    # Combined answer across all docs
+    print(qa.ask("What is the main contribution of these papers?", per_document=False))
+
+    # Per-document answers
+    print(qa.ask("Summarize each paper", per_document=True))
+    

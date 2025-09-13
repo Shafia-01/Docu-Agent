@@ -1,4 +1,6 @@
+__pycache__/
 .env
 .venv
-_pycache_/
 data/
+test_qa.py
+
