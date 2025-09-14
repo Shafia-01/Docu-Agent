@@ -1,10 +1,3 @@
-# llm_client.py
-"""
-LLM Client Factory
-Handles initialization for Gemini and Groq.
-Add more providers here later (OpenAI, DeepSeek, etc.).
-"""
-
 import os
 import google.generativeai as genai
 from groq import Groq
