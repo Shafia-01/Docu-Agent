@@ -2,7 +2,6 @@ import streamlit as st
 import requests
 import time
 
-# Configure the page
 st.set_page_config(
     page_title="IntelliDoc",
     page_icon="🤖",
@@ -10,10 +9,8 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Configuration
-API_BASE_URL = "http://127.0.0.1:8000"  # Change this to your FastAPI server URL
+API_BASE_URL = "http://127.0.0.1:8000"
 
-# Initialize session state
 if "messages" not in st.session_state:
     st.session_state.messages = []
 if "uploaded_files" not in st.session_state:
@@ -22,9 +19,7 @@ if "arxiv_papers" not in st.session_state:
     st.session_state.arxiv_papers = []
 
 def upload_documents(files):
-    """Upload documents to the FastAPI backend"""
     try:
-        # Prepare files for upload
         file_data = []
         for file in files:
             file_data.append(("files", (file.name, file.getvalue(), file.type)))
@@ -45,7 +40,6 @@ def upload_documents(files):
         return False, f"Upload error: {str(e)}"
 
 def ask_question(query: str, model: str = "groq"):
-    """Ask a question to the API"""
     try:
         data = {
             "query": query,
@@ -69,7 +63,6 @@ def ask_question(query: str, model: str = "groq"):
         return False, f"Error: {str(e)}"
 
 def arxiv_search(query: str, model: str = "groq", action: str = "list", max_papers: int = 3):
-    """Search ArXiv papers"""
     try:
         data = {
             "query": query,
@@ -95,7 +88,6 @@ def arxiv_search(query: str, model: str = "groq", action: str = "list", max_pape
         return False, f"Error: {str(e)}"
 
 def check_api_health():
-    """Check if the API is running"""
     try:
         response = requests.get(f"{API_BASE_URL}/health", timeout=5)
         return response.status_code == 200
@@ -103,20 +95,16 @@ def check_api_health():
         return False
 
 def display_arxiv_papers(papers):
-    """Display ArXiv papers in a nice format"""
     for i, paper in enumerate(papers, 1):
         with st.expander(f"📄 Paper {i}: {paper['title'][:100]}..."):
             st.write(f"**Authors:** {', '.join(paper['authors'])}")
             st.write(f"**Summary:** {paper['summary'][:500]}...")
             st.write(f"**PDF URL:** {paper['pdf_url']}")
 
-# Main app
 def main():
-    # Header
     st.title("🤖 IntelliDoc")
     st.markdown("Ask anything. Know everything!")
     
-    # Check API health
     if not check_api_health():
         st.error(f"⚠️ Cannot connect to the API server at {API_BASE_URL}")
         st.info("Please make sure your FastAPI server is running and the URL is correct.")
@@ -124,12 +112,10 @@ def main():
         return
     
     st.success("✅ Connected to API server")
-    
-    # Sidebar for configuration and file management
+
     with st.sidebar:
         st.header("⚙️ Configuration")
-        
-        # Model selection
+
         model = st.selectbox(
             "Select Model",
             options=["groq", "gemini"],
@@ -138,8 +124,7 @@ def main():
         )
         
         st.divider()
-        
-        # ArXiv Search Section
+
         st.header("🔍 ArXiv Search")
         
         with st.form("arxiv_form"):
@@ -164,8 +149,7 @@ def main():
                 download_papers = st.form_submit_button("⬇️ DOWNLOAD", type="secondary")
             with action_col3:
                 ingest_papers = st.form_submit_button("📚 INGEST", type="primary")
-        
-        # Handle ArXiv actions
+
         if list_papers and arxiv_query:
             success, result = arxiv_search(arxiv_query, model, "list", max_papers)
             if success:
@@ -208,14 +192,12 @@ def main():
             else:
                 st.error(f"Ingestion failed: {result}")
         
-        # Display found ArXiv papers
         if st.session_state.arxiv_papers:
             st.subheader("📄 Found ArXiv Papers")
             display_arxiv_papers(st.session_state.arxiv_papers)
         
         st.divider()
-        
-        # File upload section
+
         st.header("📁 Document Upload")
         
         uploaded_files = st.file_uploader(
@@ -233,7 +215,6 @@ def main():
                     st.success(f"✅ Successfully uploaded {len(uploaded_files)} file(s)")
                     st.info(f"Added {result.get('chunks_added', 0)} chunks to knowledge base")
                     
-                    # Store uploaded files in session state
                     for file in uploaded_files:
                         if file.name not in [f['name'] for f in st.session_state.uploaded_files]:
                             st.session_state.uploaded_files.append({
@@ -241,8 +222,7 @@ def main():
                                 'size': file.size,
                                 'type': file.type
                             })
-                    
-                    # Add success message to chat
+
                     st.session_state.messages.append({
                         "role": "system",
                         "content": f"📁 Successfully uploaded {len(uploaded_files)} document(s) and added {result.get('chunks_added', 0)} chunks to knowledge base.",
@@ -252,8 +232,7 @@ def main():
                     st.rerun()
                 else:
                     st.error(f"❌ Upload failed: {result}")
-        
-        # Display uploaded files
+
         if st.session_state.uploaded_files:
             st.subheader("📄 Uploaded Documents")
             for i, file in enumerate(st.session_state.uploaded_files):
@@ -266,24 +245,19 @@ def main():
                         st.rerun()
         
         st.divider()
-        
-        # Clear chat button
+
         if st.button("🗑️ Clear Chat History"):
             st.session_state.messages = []
-            st.rerun()
-        
-        # Clear ArXiv papers button
+
         if st.session_state.arxiv_papers and st.button("🗑️ Clear ArXiv Papers"):
             st.session_state.arxiv_papers = []
             st.rerun()
-        
-        # Status info
+
         st.subheader("📊 Status")
         st.write(f"**Documents:** {len(st.session_state.uploaded_files)}")
         st.write(f"**ArXiv Papers:** {len(st.session_state.arxiv_papers)}")
         st.write(f"**Model:** {model.upper()}")
     
-    # Main chat area
     col1, col2 = st.columns([3, 1])
     
     with col1:
@@ -296,7 +270,6 @@ def main():
         else:
             st.warning("📚 No knowledge sources loaded")
     
-    # Display chat messages
     chat_container = st.container()
     
     with chat_container:
@@ -317,53 +290,42 @@ def main():
                 with st.chat_message("assistant", avatar="❌"):
                     st.error(message["content"])
     
-    # Chat input
     query = st.chat_input("Ask a question about your documents or ingested ArXiv papers...")
     
-    # Handle user input
     if query:
-        # Check if we have any knowledge sources
         has_sources = st.session_state.uploaded_files or st.session_state.arxiv_papers
         
         if not has_sources:
             st.error("❌ Please upload documents or search/ingest ArXiv papers first to ask questions")
             return
         
-        # Add user message to chat
         st.session_state.messages.append({
             "role": "user",
             "content": query,
             "timestamp": time.time()
         })
         
-        # Get AI response
         success, result = ask_question(query, model)
         
         if success:
-            # Add AI response to chat
             st.session_state.messages.append({
                 "role": "assistant",
                 "content": result.get("answer", "No answer available"),
                 "timestamp": time.time()
             })
         else:
-            # Add error message to chat
             st.session_state.messages.append({
                 "role": "error",
                 "content": f"Error: {result}",
                 "timestamp": time.time()
             })
-        
-        # Refresh the page to show new messages
         st.rerun()
     
-    # Instructions
     if not st.session_state.messages:
         st.markdown("""
         ### 🚀 Getting Started:
         **Upload documents** in the sidebar or **search ArXiv papers** to build your knowledge base, then **ask questions** in the chat below to get intelligent AI-powered answers!.
         """)  
-        
 
 if __name__ == "__main__":
     main()

@@ -1,4 +1,3 @@
-# main.py
 from fastapi import FastAPI, UploadFile, File, Form
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
@@ -6,11 +5,8 @@ from typing import List
 from pathlib import Path
 from ingest import extract_documents
 from vectorstore import InMemoryVectorStore
-from qa import QAEngine, GroqModel, GeminiModel, download_pdf  # Import the standalone function
+from qa import QAEngine, GroqModel, GeminiModel, download_pdf  
 
-# -------------------------
-# Initialize app
-# -------------------------
 app = FastAPI(title="DocuAgent API", version="1.1")
 
 app.add_middleware(
@@ -23,16 +19,11 @@ app.add_middleware(
 UPLOAD_DIR = Path("data/uploads")
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
-# Store uploaded files and chunks in memory
 vectorstore = InMemoryVectorStore()
 llm_instances = {"groq": GroqModel(), "gemini": GeminiModel()}
 
-# Global QAEngine initialized with Groq by default
 qa_engine = QAEngine(vectorstore=vectorstore, llm=llm_instances["groq"])
 
-# -------------------------
-# Helper: Save uploaded files
-# -------------------------
 def save_uploaded_files(files: List[UploadFile]) -> List[str]:
     paths = []
     for file in files:
@@ -42,16 +33,10 @@ def save_uploaded_files(files: List[UploadFile]) -> List[str]:
         paths.append(str(file_path))
     return paths
 
-# -------------------------
-# Health check
-# -------------------------
 @app.get("/health")
 def health():
     return {"status": "ok"}
 
-# -------------------------
-# Upload multiple documents
-# -------------------------
 @app.post("/upload")
 async def upload_files(files: List[UploadFile] = File(...)):
     try:
@@ -62,9 +47,6 @@ async def upload_files(files: List[UploadFile] = File(...)):
     except Exception as e:
         return JSONResponse(status_code=500, content={"error": str(e)})
 
-# -------------------------
-# Ask a question about uploaded documents
-# -------------------------
 @app.post("/ask")
 async def ask_question(
     query: str = Form(...),
@@ -80,23 +62,14 @@ async def ask_question(
     except Exception as e:
         return JSONResponse(status_code=500, content={"error": str(e)})
 
-# -------------------------
-# Arxiv search (list / download / ingest)
-# -------------------------
 @app.post("/arxiv_search")
 async def arxiv_search(
     query: str = Form(...),
     model: str = Form("groq"),
     max_papers: int = Form(3),
-    action: str = Form("list"),  # "list", "download", or "ingest"
+    action: str = Form("list"), 
     top_k: int = Form(10)
 ):
-    """
-    action modes:
-    - list: just return metadata
-    - download: download PDFs (no ingestion)
-    - ingest: download + ingest into vectorstore
-    """
     try:
         if model not in llm_instances:
             return JSONResponse(status_code=400, content={"error": f"Model must be one of {list(llm_instances.keys())}"})
@@ -111,7 +84,6 @@ async def arxiv_search(
             saved_files = []
             for p in papers:
                 if p.get("pdf_url"):
-                    # Use the standalone function, not qa_engine method
                     pdf_path = download_pdf(p["pdf_url"])
                     saved_files.append(pdf_path)
             return {"query": query, "downloaded_files": saved_files}

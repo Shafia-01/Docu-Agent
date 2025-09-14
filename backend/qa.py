@@ -1,9 +1,3 @@
-# qa.py
-"""
-QA Engine with LLM-agnostic design, multi-document aggregation, and Arxiv API functional calls.
-Supports Gemini, Groq (with SentenceTransformers), and local embeddings.
-"""
-
 from typing import List, Dict
 from llm_client import get_gemini_client, get_groq_client
 from ingest import extract_documents
@@ -13,14 +7,8 @@ import os
 import hashlib
 import arxiv
 
-# ----------------------
-# Local Embeddings
-# ----------------------
 embed_model = SentenceTransformer("all-mpnet-base-v2")
 
-# ----------------------
-# LLM Interface
-# ----------------------
 class LLMInterface:
     def get_embeddings(self, text_list: List[str]) -> List[List[float]]:
         raise NotImplementedError
@@ -28,9 +16,6 @@ class LLMInterface:
     def generate_text(self, prompt: str, system_prompt: str = "") -> str:
         raise NotImplementedError
 
-# ----------------------
-# Gemini Wrapper
-# ----------------------
 class GeminiModel(LLMInterface):
     def __init__(self, embedding_model="models/text-embedding-004", llm_model="gemini-1.5-flash"):
         self.genai = get_gemini_client()
@@ -46,9 +31,6 @@ class GeminiModel(LLMInterface):
         resp = chat.send_message(f"{system_prompt or 'You are a helpful assistant.'}\n\n{prompt}")
         return resp.text
 
-# ----------------------
-# Groq Wrapper (local embeddings)
-# ----------------------
 class GroqModel(LLMInterface):
     def __init__(self, llm_model="groq/compound"):
         self.client = get_groq_client()
@@ -68,9 +50,6 @@ class GroqModel(LLMInterface):
         )
         return resp.choices[0].message.content.strip()
 
-# ----------------------
-# Arxiv API Helper
-# ----------------------
 def search_arxiv(query: str, max_results: int = 5) -> List[Dict]:
     search = arxiv.Search(query=query, max_results=max_results, sort_by=arxiv.SortCriterion.Relevance)
     results = []
@@ -92,9 +71,6 @@ def download_pdf(url: str, save_dir="data/assets") -> str:
         f.write(response.content)
     return file_path
 
-# ----------------------
-# QA Engine
-# ----------------------
 class QAEngine:
     def __init__(self, vectorstore, llm: LLMInterface):
         self.vs = vectorstore
@@ -105,11 +81,9 @@ class QAEngine:
         embeddings = self.llm.get_embeddings(texts)
         for c, vec in zip(chunks, embeddings):
             meta = c.get("meta", {})
-            # Store the full metadata - this is crucial!
             self.vs.add(vec, {"text": c["text"], "metadata": meta}, id=c["id"])
         print(f"[QA] Added {len(chunks)} chunks to vectorstore.")
         
-        # Debug: Show what document names are being stored
         doc_names = set()
         for c in chunks:
             doc_name = c.get("meta", {}).get("document_name", "unknown")
@@ -121,15 +95,9 @@ class QAEngine:
         query_vec = self.llm.get_embeddings([query])[0]
         retrieved = self.vs.similarity_search(query_vec, top_k=top_k)
 
-        # Group by source document - FIXED LOGIC HERE
         docs_dict = {}
         for r in retrieved:
-            # Try to get document name in priority order:
-            # 1. document_name (from enhanced ingest.py)
-            # 2. title (fallback)
-            # 3. source_name (filename)
-            # 4. "unknown_doc" (last resort)
-            metadata = r["metadata"].get("metadata", {})  # Get nested metadata
+            metadata = r["metadata"].get("metadata", {})  
             doc_id = (metadata.get("document_name") or 
                      metadata.get("title") or 
                      metadata.get("source_name") or 
@@ -140,7 +108,6 @@ class QAEngine:
 
         print(f"[QA] Retrieved content from {len(docs_dict)} documents: {list(docs_dict.keys())}")
 
-        # Decide on combined vs per-document
         if any(keyword in query.lower() for keyword in ["these papers", "all papers", "combined", "together"]):
             all_text = "\n\n".join([text for texts in docs_dict.values() for text in texts])
             prompt = f"""Answer the following question using all provided context from multiple documents.
@@ -169,12 +136,7 @@ Answer:
                 answers[doc_id] = answer
             return {"answers": answers, "sources": list(docs_dict.keys())}
 
-
-    # ----------------------
-    # Functional Call: Arxiv Search + User-controlled Ingestion
-    # ----------------------
     def search_and_list_arxiv(self, query: str, max_papers: int = 5) -> List[Dict]:
-        """Search Arxiv and return metadata (no ingestion)."""
         papers = search_arxiv(query, max_results=max_papers)
         print(f"[Arxiv] Found {len(papers)} papers for query: {query}")
         for i, p in enumerate(papers, 1):
@@ -184,7 +146,6 @@ Answer:
         return papers
 
     def ingest_papers(self, papers: List[Dict]):
-        """Download PDFs and ingest them into vectorstore."""
         all_chunks = []
         for paper in papers:
             if not paper.get("pdf_url"):
@@ -194,7 +155,7 @@ Answer:
             for c in chunks:
                 c["meta"].update({
                     "source_name": paper["title"],
-                    "document_name": paper["title"],  # Add this for consistency
+                    "document_name": paper["title"], 
                     "title": paper["title"]
                 })
             all_chunks.extend(chunks)
@@ -203,14 +164,8 @@ Answer:
         return len(all_chunks)
 
     def interactive_arxiv_qa(self, query: str, max_papers: int = 5, top_k: int = 10):
-        """
-        Interactive Arxiv-assisted QA with two separate options:
-        - Option 1: Download papers locally (yes/no)
-        - Option 2: Ingest downloaded papers into vectorstore (yes/no)
-        """
         papers = self.search_and_list_arxiv(query, max_papers=max_papers)
 
-        # Ask for download
         download_choice = input("Do you want to download these papers as PDFs? (yes/no): ").strip().lower()
         downloaded_papers = []
         if download_choice == "yes":
@@ -225,7 +180,6 @@ Answer:
         else:
             print("[Arxiv] Skipped downloading.")
 
-        # Ask for ingestion
         ingest_choice = input("Do you want to ingest the downloaded papers into vectorstore? (yes/no): ").strip().lower()
         if ingest_choice == "yes" and downloaded_papers:
             print("[Arxiv] Ingesting downloaded papers...")
