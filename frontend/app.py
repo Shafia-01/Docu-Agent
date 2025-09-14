@@ -186,7 +186,6 @@ def main():
                 border-top: 3px solid #5E0347 !important;  /* Thickness + color */
                 margin: 1rem 0 !important;
             }
-
             /* Optional: make horizontal rules inside main content bold too */
             hr {
                 border-top: 3px solid #5E0347 !important;
@@ -195,8 +194,7 @@ def main():
                 
         </style>
     """, unsafe_allow_html=True)
-
-    # --- Rest of your app ---
+    
     st.markdown('<h1 style="font-size:5rem; text-align:center; font-family:Cambria, serif; color:#5E0347;">🤖 IntelliDoc</h1>', unsafe_allow_html=True)
     st.markdown('<p style="font-size:1.5rem; text-align:center; font-family:Cambria, serif; color:#EB2993;">Ask anything. Know everything!</p>', unsafe_allow_html=True)
 
