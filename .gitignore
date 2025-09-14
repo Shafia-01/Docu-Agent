@@ -2,5 +2,5 @@ __pycache__/
 .env
 .venv
 data/
-test_qa.py
+
 

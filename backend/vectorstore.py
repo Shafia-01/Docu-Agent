@@ -1,4 +1,4 @@
-# src/vectorstore.py
+# vectorstore.py
 """
 A tiny in-memory vector store using numpy for cosine similarity.
 This is intentionally small & dependency-light so you can run locally.
