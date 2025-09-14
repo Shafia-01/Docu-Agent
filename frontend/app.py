@@ -102,25 +102,120 @@ def display_arxiv_papers(papers):
             st.write(f"**PDF URL:** {paper['pdf_url']}")
 
 def main():
-    st.title("🤖 IntelliDoc")
-    st.markdown("Ask anything. Know everything!")
-    
+    st.markdown("""
+        <style>
+            /* Apply Cambria globally */
+            html, body, p, div.stMarkdown, div.stText, .stChatMessage, label, input, textarea, select {
+                font-family: Cambria, serif !important;
+                text-align: center !important;
+            }
+
+            /* Titles */
+            h1, h2, h3, h4, h5, h6 {
+                font-family: Cambria, serif !important;
+                font-weight: bold;
+                color: #0d47a1;
+                text-align: center !important;
+            }
+
+            /* Center the whole main block */
+            div.block-container {
+                text-align: center;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+            }
+
+            /* Sidebar */
+            section[data-testid="stSidebar"] {
+                background-color: #FFDAF5;
+                border-right: 2px solid #d0d7de;
+                font-family: Cambria, serif !important;
+            }
+            
+            /* Buttons */
+            .stButton button {
+                font-family: Cambria, serif !important;
+                background-color: #0d47a1;
+                color: white;
+                border-radius: 8px;
+                padding: 0.5rem 1rem;
+                font-weight: bold;
+                border: none;
+                transition: 0.3s;
+                display: block;
+                margin: 0 auto;
+            }
+            .stButton button:hover {
+                background-color: #1565c0;
+                transform: translateY(-2px);
+            }
+
+            /* Chat bubbles */
+            .stChatMessage {
+                border-radius: 12px;
+                padding: 0.8rem;
+                margin-bottom: 0.6rem;
+                text-align: center;
+            }
+            .stChatMessage[data-testid="stChatMessage-user"] {
+                background-color: #e3f2fd;
+                border: 1px solid #90caf9;
+            }
+            .stChatMessage[data-testid="stChatMessage-assistant"] {
+                background-color: #f1f8e9;
+                border: 1px solid #aed581;
+            }
+
+            /* Expanders */
+            details summary {
+                font-family: inherit !important;
+                text-align: center;
+            }
+
+            /* Inputs */
+            input, textarea, select {
+                border-radius: 6px !important;
+                border: 1px solid #d0d7de !important;
+                padding: 0.4rem !important;
+                text-align: center !important;
+            }
+            
+            /* Sidebar divider styling */
+            section[data-testid="stSidebar"] hr {
+                border-top: 3px solid #5E0347 !important;  /* Thickness + color */
+                margin: 1rem 0 !important;
+            }
+
+            /* Optional: make horizontal rules inside main content bold too */
+            hr {
+                border-top: 3px solid #5E0347 !important;
+                margin: 1rem 0 !important;
+            }
+                
+        </style>
+    """, unsafe_allow_html=True)
+
+    # --- Rest of your app ---
+    st.markdown('<h1 style="font-size:5rem; text-align:center; font-family:Cambria, serif; color:#5E0347;">🤖 IntelliDoc</h1>', unsafe_allow_html=True)
+    st.markdown('<p style="font-size:1.5rem; text-align:center; font-family:Cambria, serif; color:#EB2993;">Ask anything. Know everything!</p>', unsafe_allow_html=True)
+
     if not check_api_health():
-        st.error(f"⚠️ Cannot connect to the API server at {API_BASE_URL}")
-        st.info("Please make sure your FastAPI server is running and the URL is correct.")
+        st.error(f"**⚠️ Cannot connect to the API server at {API_BASE_URL}**")
+        st.info("**Please make sure your FastAPI server is running and the URL is correct.**")
         st.code("uvicorn main:app --reload", language="bash")
         return
     
-    st.success("✅ Connected to API server")
+    st.success("**✅ Connected to API server**")
 
     with st.sidebar:
         st.header("⚙️ Configuration")
 
         model = st.selectbox(
-            "Select Model",
+            "**Select Model**",
             options=["groq", "gemini"],
             index=0,
-            help="Choose the AI model for answering questions"
+            help="**Choose the AI model for answering questions**"
         )
         
         st.divider()
@@ -129,26 +224,26 @@ def main():
         
         with st.form("arxiv_form"):
             arxiv_query = st.text_input(
-                "ArXiv Search Query",
+                "**ArXiv Search Query**",
                 placeholder="e.g., robotics"
             )
             
             max_papers = st.slider(
-                "Max Papers",
+                "**Max Papers**",
                 min_value=1,
                 max_value=10,
                 value=3,
-                help="Maximum number of papers to find"
+                help="**Maximum number of papers to find**"
             )
             
             action_col1, action_col2, action_col3 = st.columns(3)
             
             with action_col1:
-                list_papers = st.form_submit_button("📋 LIST", type="secondary")
+                list_papers = st.form_submit_button("**📋 LIST**", type="secondary")
             with action_col2:
-                download_papers = st.form_submit_button("⬇️ DOWNLOAD", type="secondary")
+                download_papers = st.form_submit_button("**⬇️ DOWNLOAD**", type="secondary")
             with action_col3:
-                ingest_papers = st.form_submit_button("📚 INGEST", type="primary")
+                ingest_papers = st.form_submit_button("**📚 INGEST**", type="primary")
 
         if list_papers and arxiv_query:
             success, result = arxiv_search(arxiv_query, model, "list", max_papers)
@@ -201,10 +296,10 @@ def main():
         st.header("📁 Document Upload")
         
         uploaded_files = st.file_uploader(
-            "Choose documents",
+            "**Choose documents**",
             type=['pdf', 'doc', 'docx', 'txt', 'md'],
             accept_multiple_files=True,
-            help="Upload PDF, Word documents, or text files"
+            help="**Upload PDF, Word documents, or text files**"
         )
         
         if uploaded_files:
@@ -258,20 +353,13 @@ def main():
         st.write(f"**ArXiv Papers:** {len(st.session_state.arxiv_papers)}")
         st.write(f"**Model:** {model.upper()}")
     
-    col1, col2 = st.columns([3, 1])
-    
-    with col1:
-        st.header("💬 Chat Interface")
-    
-    with col2:
-        total_sources = len(st.session_state.uploaded_files) + len(st.session_state.arxiv_papers)
-        if total_sources > 0:
-            st.info(f"📚 {total_sources} knowledge sources loaded")
-        else:
-            st.warning("📚 No knowledge sources loaded")
-    
+    total_sources = len(st.session_state.uploaded_files) + len(st.session_state.arxiv_papers)
+    if total_sources > 0:
+        st.info(f"**📚 {total_sources} knowledge sources loaded**", icon="📖")
+    else:
+        st.warning("**📚 No knowledge sources loaded**", icon="⚠️")
+
     chat_container = st.container()
-    
     with chat_container:
         for message in st.session_state.messages:
             if message["role"] == "user":
@@ -296,7 +384,7 @@ def main():
         has_sources = st.session_state.uploaded_files or st.session_state.arxiv_papers
         
         if not has_sources:
-            st.error("❌ Please upload documents or search/ingest ArXiv papers first to ask questions")
+            st.error("**❌ Please upload documents or search/ingest ArXiv papers first to ask questions**")
             return
         
         st.session_state.messages.append({
@@ -324,7 +412,7 @@ def main():
     if not st.session_state.messages:
         st.markdown("""
         ### 🚀 Getting Started:
-        **Upload documents** in the sidebar or **search ArXiv papers** to build your knowledge base, then **ask questions** in the chat below to get intelligent AI-powered answers!.
+        **Upload documents** in the sidebar or **search ArXiv papers** to build your knowledge base, then **ask questions** in the chat below to get intelligent AI-powered answers.
         """)  
 
 if __name__ == "__main__":
